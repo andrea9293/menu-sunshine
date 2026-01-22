@@ -256,6 +256,9 @@ const App: React.FC = () => {
             >
               Ripristina Dati Originali
             </button>
+            <div className="mt-6 text-center">
+              <p className="text-xs text-slate-400">Creato da <span className="font-bold text-slate-700">Andrea Bravaccino</span></p>
+            </div>
           </div>
         )}
       </main>

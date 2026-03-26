@@ -221,7 +221,7 @@ const App: React.FC = () => {
                 <div className={`bg-white pt-12 pb-6 px-6 rounded-[2.5rem] shadow-lg border mt-4 ${(SNACK_GROUP_COLORS[todaySnackGroup.name] || defaultColors).border}`}>
                   <div className="flex items-center justify-between mb-1">
                     <div>
-                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mb-1">Merenda di Oggi</h3>
+                      <h3 className="text-xs font-black text-orange-300 uppercase tracking-[0.3em] mb-6">Merenda di Oggi</h3>
                       <p className={`text-lg font-extrabold ${(SNACK_GROUP_COLORS[todaySnackGroup.name] || defaultColors).text}`}>
                         {todaySnackGroup.name}
                       </p>

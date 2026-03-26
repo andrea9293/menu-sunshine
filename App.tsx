@@ -66,7 +66,7 @@ const App: React.FC = () => {
   };
 
   const handleUpdateMenu = (weekIdx: number, day: string, dish: string) => {
-    const newMenu = JSON.parse(JSON.stringify(config.menu));
+    const newMenu = structuredClone(config.menu);
     newMenu[weekIdx].days[day] = dish;
     setConfig({ ...config, menu: newMenu });
   };
@@ -76,19 +76,19 @@ const App: React.FC = () => {
   };
 
   const handleUpdateSnackSchedule = (day: DayOfWeek, groupName: string) => {
-    const newSnack = JSON.parse(JSON.stringify(config.snack));
+    const newSnack = structuredClone(config.snack);
     newSnack.schedule[day] = groupName;
     setConfig({ ...config, snack: newSnack });
   };
 
   const handleUpdateSnackCategory = (groupIdx: number, catIdx: number, field: 'name' | 'items', value: string) => {
-    const newSnack = JSON.parse(JSON.stringify(config.snack));
+    const newSnack = structuredClone(config.snack);
     newSnack.groups[groupIdx].categories[catIdx][field] = value;
     setConfig({ ...config, snack: newSnack });
   };
 
   const handleUpdateSnackWarning = (value: string) => {
-    const newSnack = JSON.parse(JSON.stringify(config.snack));
+    const newSnack = structuredClone(config.snack);
     newSnack.warning = value;
     setConfig({ ...config, snack: newSnack });
   };

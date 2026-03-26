@@ -1,25 +1,48 @@
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Settings as SettingsIcon, LayoutGrid, Utensils, ChevronLeft, ChevronRight, Sun, Moon, RotateCcw } from 'lucide-react';
+import { Calendar, Settings as SettingsIcon, LayoutGrid, Utensils, ChevronLeft, ChevronRight, Sun, Moon, RotateCcw, Cookie, ChevronDown, AlertTriangle, Apple, Wheat, Milk } from 'lucide-react';
 import { format, parseISO, addDays, isSameDay } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { AppConfig, TabType } from './types';
-import { DEFAULT_MENU, DEFAULT_START_DATE, STORAGE_KEY, DAYS_LIST } from './constants';
+import { AppConfig, TabType, SnackGroup, DayOfWeek } from './types';
+import { DEFAULT_MENU, DEFAULT_START_DATE, DEFAULT_SNACK, STORAGE_KEY, DAYS_LIST } from './constants';
 import { calculateRotationWeek, mapDayToMenuKey, isWeekend } from './utils';
 
+const SNACK_GROUP_ICONS: Record<string, React.ReactNode> = {
+  'Gruppo Cereali': <Wheat size={20} strokeWidth={2.5} />,
+  'Gruppo Frutta e Verdura': <Apple size={20} strokeWidth={2.5} />,
+  'Gruppo Latte e Derivati': <Milk size={20} strokeWidth={2.5} />,
+};
+
+const SNACK_GROUP_COLORS: Record<string, { bg: string; text: string; light: string; border: string }> = {
+  'Gruppo Cereali': { bg: 'bg-amber-400', text: 'text-amber-700', light: 'bg-amber-50', border: 'border-amber-100' },
+  'Gruppo Frutta e Verdura': { bg: 'bg-green-400', text: 'text-green-700', light: 'bg-green-50', border: 'border-green-100' },
+  'Gruppo Latte e Derivati': { bg: 'bg-blue-400', text: 'text-blue-700', light: 'bg-blue-50', border: 'border-blue-100' },
+};
+
+const defaultColors = { bg: 'bg-orange-400', text: 'text-orange-700', light: 'bg-orange-50', border: 'border-orange-100' };
+
 const App: React.FC = () => {
-  // State initialization
+  // State initialization with backward compatibility
   const [config, setConfig] = useState<AppConfig>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Backward compatibility: add snack config if missing
+      if (!parsed.snack) {
+        parsed.snack = DEFAULT_SNACK;
+      }
+      return parsed;
+    }
     return {
       startDate: DEFAULT_START_DATE,
-      menu: DEFAULT_MENU
+      menu: DEFAULT_MENU,
+      snack: DEFAULT_SNACK
     };
   });
 
   const [consultDate, setConsultDate] = useState<Date>(new Date());
   const [activeTab, setActiveTab] = useState<TabType>('daily');
+  const [snackExpanded, setSnackExpanded] = useState<boolean>(false);
 
   // Persistence
   useEffect(() => {
@@ -31,6 +54,12 @@ const App: React.FC = () => {
   const menuKey = mapDayToMenuKey(consultDate);
   const todayDish = menuKey ? config.menu[currentRotationWeek - 1].days[menuKey] : null;
   const isSelectedToday = isSameDay(consultDate, new Date());
+
+  // Snack logic
+  const todaySnackGroupName = menuKey ? config.snack.schedule[menuKey] : null;
+  const todaySnackGroup: SnackGroup | null = todaySnackGroupName
+    ? config.snack.groups.find(g => g.name === todaySnackGroupName) || null
+    : null;
 
   const navigateDate = (days: number) => {
     setConsultDate(prev => addDays(prev, days));
@@ -44,6 +73,24 @@ const App: React.FC = () => {
 
   const handleUpdateStartDate = (newDate: string) => {
     setConfig({ ...config, startDate: newDate });
+  };
+
+  const handleUpdateSnackSchedule = (day: DayOfWeek, groupName: string) => {
+    const newSnack = JSON.parse(JSON.stringify(config.snack));
+    newSnack.schedule[day] = groupName;
+    setConfig({ ...config, snack: newSnack });
+  };
+
+  const handleUpdateSnackCategory = (groupIdx: number, catIdx: number, field: 'name' | 'items', value: string) => {
+    const newSnack = JSON.parse(JSON.stringify(config.snack));
+    newSnack.groups[groupIdx].categories[catIdx][field] = value;
+    setConfig({ ...config, snack: newSnack });
+  };
+
+  const handleUpdateSnackWarning = (value: string) => {
+    const newSnack = JSON.parse(JSON.stringify(config.snack));
+    newSnack.warning = value;
+    setConfig({ ...config, snack: newSnack });
   };
 
   const goToToday = () => {
@@ -161,6 +208,58 @@ const App: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Snack Section - Only on weekdays */}
+            {!isWeekend(consultDate) && todaySnackGroup && (
+              <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="absolute top-0 left-2 p-3 rounded-2xl shadow-lg z-20 bg-white">
+                  <div className={(SNACK_GROUP_COLORS[todaySnackGroup.name] || defaultColors).text}>
+                    {SNACK_GROUP_ICONS[todaySnackGroup.name] || <Cookie size={20} strokeWidth={2.5} />}
+                  </div>
+                </div>
+                
+                <div className={`bg-white pt-12 pb-6 px-6 rounded-[2.5rem] shadow-lg border mt-4 ${(SNACK_GROUP_COLORS[todaySnackGroup.name] || defaultColors).border}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div>
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mb-1">Merenda di Oggi</h3>
+                      <p className={`text-lg font-extrabold ${(SNACK_GROUP_COLORS[todaySnackGroup.name] || defaultColors).text}`}>
+                        {todaySnackGroup.name}
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => setSnackExpanded(!snackExpanded)}
+                      className={`p-2 rounded-xl transition-all ${(SNACK_GROUP_COLORS[todaySnackGroup.name] || defaultColors).light} ${(SNACK_GROUP_COLORS[todaySnackGroup.name] || defaultColors).text}`}
+                      aria-label={snackExpanded ? "Nascondi suggerimenti" : "Mostra suggerimenti"}
+                    >
+                      <ChevronDown size={20} strokeWidth={3} className={`transition-transform duration-300 ${snackExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                  </div>
+
+                  {snackExpanded && (
+                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300 mt-4">
+                      {todaySnackGroup.categories.map((cat, idx) => (
+                        <div key={idx} className={`p-4 rounded-2xl ${(SNACK_GROUP_COLORS[todaySnackGroup.name] || defaultColors).light}`}>
+                          <p className={`text-[10px] font-black uppercase tracking-wider mb-1.5 ${(SNACK_GROUP_COLORS[todaySnackGroup.name] || defaultColors).text}`}>
+                            {cat.name}
+                          </p>
+                          <p className="text-sm text-slate-600 font-medium leading-relaxed">{cat.items}</p>
+                        </div>
+                      ))}
+                      
+                      {config.snack.warning && (
+                        <div className="flex items-start gap-2.5 p-4 bg-red-50 rounded-2xl mt-2">
+                          <AlertTriangle size={16} className="text-red-400 mt-0.5 shrink-0" strokeWidth={2.5} />
+                          <div>
+                            <p className="text-[10px] font-black text-red-400 uppercase tracking-wider mb-0.5">Da evitare</p>
+                            <p className="text-xs text-red-400/80 font-medium leading-relaxed">{config.snack.warning}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -193,6 +292,44 @@ const App: React.FC = () => {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Snack Weekly Schedule */}
+            <div className="mt-8">
+              <div className="flex items-center gap-3 px-2 mb-4">
+                <Cookie className="text-orange-500" size={24} strokeWidth={2.5} />
+                <h2 className="text-2xl font-black text-slate-800">Merende</h2>
+              </div>
+              <div className="bg-white rounded-[2rem] shadow-lg overflow-hidden border border-orange-50">
+                <div className="px-6 py-4 bg-gradient-to-r from-orange-400 to-orange-500 text-white">
+                  <span className="font-black uppercase text-xs tracking-[0.2em]">Calendario Settimanale</span>
+                </div>
+                <div className="p-6 space-y-4">
+                  {DAYS_LIST.map((day) => {
+                    const groupName = config.snack.schedule[day];
+                    const colors = SNACK_GROUP_COLORS[groupName] || defaultColors;
+                    const isToday = menuKey === day;
+                    return (
+                      <div key={day} className={`flex items-center gap-4 pb-3 border-b border-slate-50 last:border-0 last:pb-0 ${isToday ? 'scale-[1.02]' : ''} transition-all`}>
+                        <span className="text-[10px] font-black text-orange-300 uppercase w-20 tracking-wider shrink-0">{day}</span>
+                        <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${colors.light} ${colors.text}`}>
+                          {groupName}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {config.snack.warning && (
+                  <div className="px-6 pb-5">
+                    <div className="flex items-start gap-2.5 p-3 bg-red-50 rounded-xl">
+                      <AlertTriangle size={14} className="text-red-400 mt-0.5 shrink-0" strokeWidth={2.5} />
+                      <p className="text-[10px] text-red-400/80 font-bold leading-relaxed">
+                        <span className="font-black text-red-400">Da evitare: </span>{config.snack.warning}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -246,10 +383,69 @@ const App: React.FC = () => {
               ))}
             </div>
 
+            {/* Snack Settings */}
+            <div className="space-y-5">
+              <h3 className="text-xs font-black text-slate-400 uppercase ml-4 tracking-[0.2em]">Personalizza Merende</h3>
+              
+              {/* Snack Schedule */}
+              <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-5">
+                <p className="font-black text-orange-500 text-sm tracking-wider uppercase">Calendario Merende</p>
+                <div className="space-y-4">
+                  {DAYS_LIST.map((day) => (
+                    <div key={day} className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-300 uppercase ml-2">{day}</label>
+                      <select 
+                        value={config.snack.schedule[day]}
+                        onChange={(e) => handleUpdateSnackSchedule(day, e.target.value)}
+                        className="w-full bg-slate-50 border-none rounded-xl p-3 text-sm font-bold text-slate-700 focus:ring-1 focus:ring-orange-300 transition-all outline-none"
+                      >
+                        {config.snack.groups.map((g) => (
+                          <option key={g.name} value={g.name}>{g.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Snack Groups */}
+              {config.snack.groups.map((group, gIdx) => (
+                <div key={group.name} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-5">
+                  <p className={`font-black text-sm tracking-wider uppercase ${(SNACK_GROUP_COLORS[group.name] || defaultColors).text}`}>
+                    {group.name}
+                  </p>
+                  <div className="space-y-4">
+                    {group.categories.map((cat, cIdx) => (
+                      <div key={cIdx} className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-300 uppercase ml-2">{cat.name}</label>
+                        <input 
+                          type="text"
+                          value={cat.items}
+                          onChange={(e) => handleUpdateSnackCategory(gIdx, cIdx, 'items', e.target.value)}
+                          className="w-full bg-slate-50 border-none rounded-xl p-3 text-sm font-bold text-slate-700 focus:ring-1 focus:ring-orange-300 transition-all outline-none"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Warning */}
+              <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-red-50 space-y-3">
+                <p className="font-black text-red-400 text-sm tracking-wider uppercase">Da Evitare</p>
+                <input 
+                  type="text"
+                  value={config.snack.warning}
+                  onChange={(e) => handleUpdateSnackWarning(e.target.value)}
+                  className="w-full bg-red-50 border-none rounded-xl p-3 text-sm font-bold text-slate-700 focus:ring-1 focus:ring-red-300 transition-all outline-none"
+                />
+              </div>
+            </div>
+
             <button 
               onClick={() => {
-                if(confirm("Vuoi davvero ripristinare il menu originale?")) {
-                  setConfig({ startDate: DEFAULT_START_DATE, menu: DEFAULT_MENU });
+                if(confirm("Vuoi davvero ripristinare tutti i dati originali (menu e merende)?")) {
+                  setConfig({ startDate: DEFAULT_START_DATE, menu: DEFAULT_MENU, snack: DEFAULT_SNACK });
                 }
               }}
               className="w-full py-5 text-xs font-black text-red-400 bg-white rounded-[2rem] border-2 border-red-50 hover:bg-red-50 hover:text-red-500 transition-all uppercase tracking-widest shadow-sm"

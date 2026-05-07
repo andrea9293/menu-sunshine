@@ -41,7 +41,7 @@ export const DEFAULT_MENU: WeekMenu[] = [
       'Martedì': 'Pasta con zucca',
       'Mercoledì': 'Pasta e fagioli',
       'Giovedì': 'Pasta al sugo',
-      'Venerdì': 'Riso con verza o pasta con patate'
+      'Venerdì': 'Pasta con patate'
     }
   }
 ];
